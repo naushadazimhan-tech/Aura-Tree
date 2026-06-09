@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Growing Aura Tree</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    overflow:hidden;
+    background:#000;
+}
+
+canvas{
+    display:block;
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+function resize(){
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
+
+ctx.lineCap = "round";
+
+class Branch{
+    constructor(x,y,length,angle,depth){
+        this.x = x;
+        this.y = y;
+        this.length = length;
+        this.angle = angle;
+        this.depth = depth;
+
+        this.progress = 0;
+        this.speed = 0.015 + Math.random()*0.02;
+
+        this.finished = false;
+        this.childrenCreated = false;
+    }
+
+    update(){
+        if(!this.finished){
+            this.progress += this.speed;
+
+            if(this.progress >= 1){
+                this.progress = 1;
+                this.finished = true;
+            }
+        }
+    }
+
+    draw(){
+
+        const endX =
+            this.x +
+            Math.cos(this.angle) *
+            this.length *
+            this.progress;
+
+        const endY =
+            this.y +
+            Math.sin(this.angle) *
+            this.length *
+            this.progress;
+
+        ctx.beginPath();
+        ctx.moveTo(this.x,this.y);
+        ctx.lineTo(endX,endY);
+
+        ctx.lineWidth = Math.max(1,this.depth*0.6);
+
+        ctx.strokeStyle =
+            `hsla(${170 + this.depth*8},100%,70%,0.85)`;
+
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = "#00ffff";
+
+        ctx.stroke();
+
+        // glowing growth tip
+        ctx.beginPath();
+        ctx.arc(endX,endY,2.5,0,Math.PI*2);
+        ctx.fillStyle = "rgba(180,255,255,0.9)";
+        ctx.fill();
+
+        return {x:endX,y:endY};
+    }
+}
+
+const branches = [];
+
+function createChildren(branch, tip){
+
+    if(branch.depth <= 0) return;
+
+    const spread = 0.3 + Math.random()*0.45;
+
+    branches.push(
+        new Branch(
+            tip.x,
+            tip.y,
+            branch.length * (0.72 + Math.random()*0.08),
+            branch.angle - spread,
+            branch.depth - 1
+        )
+    );
+
+    branches.push(
+        new Branch(
+            tip.x,
+            tip.y,
+            branch.length * (0.72 + Math.random()*0.08),
+            branch.angle + spread,
+            branch.depth - 1
+        )
+    );
+
+    if(Math.random() > 0.6){
+        branches.push(
+            new Branch(
+                tip.x,
+                tip.y,
+                branch.length * 0.55,
+                branch.angle + (Math.random()-0.5),
+                branch.depth - 2
+            )
+        );
+    }
+}
+
+function startTree(){
+
+    branches.length = 0;
+
+    branches.push(
+        new Branch(
+            canvas.width/2,
+            canvas.height,
+            140,
+            -Math.PI/2,
+            11
+        )
+    );
+}
+
+startTree();
+
+function animate(){
+
+    requestAnimationFrame(animate);
+
+    // slow fade for glowing trails
+    ctx.fillStyle = "rgba(0,0,0,0.08)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // subtle aura field
+    const glow = ctx.createRadialGradient(
+        canvas.width/2,
+        canvas.height*0.75,
+        0,
+        canvas.width/2,
+        canvas.height*0.75,
+        600
+    );
+
+    glow.addColorStop(0,"rgba(0,255,255,0.04)");
+    glow.addColorStop(1,"rgba(0,0,0,0)");
+
+    ctx.fillStyle = glow;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    for(const branch of branches){
+
+        branch.update();
+
+        const tip = branch.draw();
+
+        if(branch.finished && !branch.childrenCreated){
+
+            branch.childrenCreated = true;
+
+            createChildren(branch,{
+                x:
+                    branch.x +
+                    Math.cos(branch.angle) *
+                    branch.length,
+
+                y:
+                    branch.y +
+                    Math.sin(branch.angle) *
+                    branch.length
+            });
+        }
+    }
+}
+
+animate();
+
+// click to regrow a new tree
+canvas.addEventListener("click", startTree);
+
+</script>
+
+</body>
+</html>
